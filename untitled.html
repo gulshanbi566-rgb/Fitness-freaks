@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="manifest" href="manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js');
+  }
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Fitness Ascend: Body Rank + Smart Workout</title>
+  <!-- Google Fonts + Font Awesome -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(145deg, #0b0f1c 0%, #101624 100%);
+      min-height: 100vh;
+      padding: 2rem 1.5rem;
+    }
+
+    .app-container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* header */
+    .rank-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .rank-header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #F9E0A0, #E4B363);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: -0.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .sub {
+      color: #8e9aaf;
+      margin-top: 8px;
+    }
+
+    /* dashboard grid: 2 columns left & right, plus new row */
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr 1.1fr;
+      gap: 1.8rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 880px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+      body { padding: 1.2rem; }
+    }
+
+    .card {
+      background: rgba(18, 25, 45, 0.75);
+      backdrop-filter: blur(8px);
+      border-radius: 2rem;
+      border: 1px solid rgba(255, 215, 150, 0.2);
+      box-shadow: 0 20px 35px -12px rgba(0,0,0,0.4);
+      padding: 1.6rem;
+      transition: transform 0.2s;
+    }
+
+    .rank-badge {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px dashed rgba(255,215,150,0.3);
+      padding-bottom: 0.8rem;
+    }
+    .rank-icon { font-size: 3rem; }
+    .current-rank-name {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(120deg, #FFF2D7, #FFDFA5);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .points-counter {
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: #FFE7B6;
+      margin: 0.5rem 0 0.2rem;
+    }
+    .progress-bar-bg {
+      background: #1f2a3e;
+      border-radius: 40px;
+      height: 14px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #f3b33d, #ffd966);
+      transition: width 0.35s ease;
+    }
+    .workout-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 1.2rem 0 1rem;
+    }
+    .workout-btn {
+      background: #1e2a3e;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 60px;
+      font-weight: 600;
+      color: #f0f3fa;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .workout-btn:hover { background: #2f3e5a; transform: translateY(-2px); }
+    .custom-area {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 18px 0 12px;
+    }
+    .custom-input {
+      background: #0f1622;
+      border: 1px solid #2c3a50;
+      padding: 10px 14px;
+      border-radius: 40px;
+      color: white;
+      flex: 1;
+    }
+    .primary-btn {
+      background: #ffb347;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 40px;
+      font-weight: bold;
+      color: #1a1f2b;
+      cursor: pointer;
+    }
+    .reset-btn { background: #3a2c2f; color: #ffbc8c; }
+    .rank-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .rank-item {
+      background: #0b1120b3;
+      padding: 8px 12px;
+      border-radius: 30px;
+      display: flex;
+      justify-content: space-between;
+      border-left: 3px solid #ffb347;
+    }
+    .activity-log {
+      max-height: 250px;
+      overflow-y: auto;
+      margin-top: 1rem;
+    }
+    .log-entry {
+      background: #11182770;
+      border-radius: 40px;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      font-size: 0.75rem;
+    }
+    /* NEW WORKOUT & ASSESSMENT SECTION */
+    .wellness-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.8rem;
+      margin-top: 0.5rem;
+    }
+    @media (max-width: 760px) {
+      .wellness-row { grid-template-columns: 1fr; }
+    }
+    .question-group {
+      margin-bottom: 1rem;
+    }
+    .question-group label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: #ffdd99;
+      font-size: 0.85rem;
+    }
+    select, .assessment-input {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0f1622;
+      border: 1px solid #2c3a50;
+      border-radius: 40px;
+      color: white;
+    }
+    .workout-plan {
+      background: #0a0f1ab3;
+      border-radius: 1.2rem;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+    .workout-plan h4 {
+      color: #ffd966;
+      margin-bottom: 10px;
+    }
+    .workout-plan ul {
+      padding-left: 1.2rem;
+      color: #ccd6f0;
+      font-size: 0.85rem;
+    }
+    .workout-plan li {
+      margin: 6px 0;
+    }
+    .badge-assessment {
+      background: #ffb34720;
+      border-radius: 30px;
+      padding: 5px 12px;
+      font-size: 0.7rem;
+      display: inline-block;
+    }
+    .toast-msg {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: #2c2f3ecc;
+      backdrop-filter: blur(12px);
+      padding: 12px 20px;
+      border-radius: 80px;
+      color: #ffefcf;
+      z-index: 1000;
+      border-left: 5px solid #ffb347;
+    }
+    footer {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.7rem;
+      color: #5c6f8c;
+    }
+    button { cursor: pointer; }
+  </style>
+</head>
+<body>
+<div class="app-container">
+  <div class="rank-header">
+    <h1><i class="fas fa-dumbbell"></i> BODY RANK ASCEND <i class="fas fa-chart-line"></i></h1>
+    <div class="sub">10 legendary ranks · Body Assessment + Custom Workout Plan</div>
+  </div>
+
+  <div class="dashboard">
+    <!-- LEFT COL: RANK & XP -->
+    <div class="card">
+      <div class="rank-badge">
+        <div class="rank-icon" id="rankEmoji">🥉</div>
+        <div><div style="font-size:0.8rem;">Current Rank</div><div class="current-rank-name" id="currentRankDisplay">Bronze</div></div>
+      </div>
+      <div class="points-counter"><i class="fas fa-bolt"></i> <span id="totalPoints">0</span> XP</div>
+      <div class="next-rank-info" id="nextRankInfo">🔹 <span id="pointsToNext">100</span> XP to next rank</div>
+      <div class="progress-bar-bg"><div class="progress-fill" id="rankProgressFill"></div></div>
+      <div class="stats-mini" style="display:flex; justify-content:space-between; margin-top:4px;"><span>⬤ Bronze</span><span id="progressRangeText">0/100</span><span>🏆 Expert</span></div>
+      <div style="margin-top: 8px; font-size:0.75rem;"><i class="fas fa-brain"></i> Body assessment can boost your XP & unlock tailored workouts.</div>
+    </div>
+
+    <!-- RIGHT COL: WORKOUT LOGGING -->
+    <div class="card glass-card">
+      <h3><i class="fas fa-fist-raised"></i> Log fitness activity</h3>
+      <div class="workout-grid" id="workoutButtonsContainer"></div>
+      <div class="custom-area">
+        <input type="text" id="customWorkoutName" class="custom-input" placeholder="Workout name" value="Core training">
+        <input type="number" id="customPoints" class="custom-input" placeholder="XP" value="25" step="1" min="1">
+        <button id="addCustomBtn" class="primary-btn"><i class="fas fa-plus-circle"></i> Add XP</button>
+      </div>
+      <button id="resetProgressBtn" class="primary-btn reset-btn" style="width:100%; margin-top:4px;"><i class="fas fa-sync-alt"></i> Reset Journey</button>
+      <div class="activity-log" id="activityLogList"><div style="text-align:center; padding:20px;">✨ No activities yet</div></div>
+    </div>
+  </div>
+
+  <!-- NEW ROW: BODY ASSESSMENT + COMPLETE WORKOUT GENERATOR -->
+  <div class="wellness-row">
+    <!-- Body Assessment Card -->
+    <div class="card">
+      <h3><i class="fas fa-stethoscope"></i> Body Assessment Quiz</h3>
+      <p style="font-size:0.75rem; margin-bottom:12px;">Answer honestly — your responses will calibrate your ranking progress and unlock a custom workout.</p>
+      <div class="question-group">
+        <label><i class="fas fa-heartbeat"></i> Weekly workout frequency</label>
+        <select id="assessFreq">
+          <option value="0">Rarely (0-1 days)</option>
+          <option value="1" selected>2-3 days (moderate)</option>
+          <option value="2">4-5 days (active)</option>
+          <option value="3">6-7 days (very active)</option>
+        </select>
+      </div>
+      <div class="question-group">
+        <label><i class="fas fa-fist-raised"></i> Max push-ups (in one set)</label>
+        <select id="assessPushups">
+          <option value="0">0-5</option>
+          <option value="1" selected>6-15</option>
+          <option value="2">16-30</option>
+          <option value="3">30+</option>
+        </select>
+      </div>
+      <div class="question-group">
+        <label><i class="fas fa-walking"></i> Cardio endurance (running 1km)</label>
+        <select id="assessCardio">
+          <option value="0">Difficult / >8 min</option>
+          <option value="1" selected>Moderate (6-8 min)</option>
+          <option value="2">Good (5-6 min)</option>
+          <option value="3">Excellent (<5 min)</option>
+        </select>
+      </div>
+      <div class="question-group">
+        <label><i class="fas fa-weight-hanging"></i> Strength level (squat / lifting)</label>
+        <select id="assessStrength">
+          <option value="0">Beginner</option>
+          <option value="1" selected>Intermediate</option>
+          <option value="2">Advanced</option>
+          <option value="3">Elite</option>
+        </select>
+      </div>
+      <button id="submitAssessmentBtn" class="primary-btn" style="width:100%;"><i class="fas fa-clipboard-list"></i> Submit & Get Body Score</button>
+      <div id="assessmentResult" style="margin-top: 14px; font-size:0.8rem; color:#ffd58c;"></div>
+      <div class="badge-assessment" id="lastAssessmentBadge">No assessment yet</div>
+    </div>
+
+    <!-- Complete Workout Plan Generator -->
+    <div class="card">
+      <h3><i class="fas fa-calendar-check"></i> Complete Workout Plan</h3>
+      <p style="font-size:0.75rem; margin-bottom: 10px;">Based on your rank & body assessment — generated for today.</p>
+      <button id="generateWorkoutBtn" class="primary-btn" style="background:#5f4c2b;"><i class="fas fa-dumbbell"></i> Generate Full Workout</button>
+      <div id="workoutPlanContainer" class="workout-plan">
+        <h4><i class="fas fa-hourglass-half"></i> Your personalized routine</h4>
+        <p style="color:#bbccff;">Click "Generate" after assessment to see a complete workout with warmup, main set, and cooldown.</p>
+      </div>
+      <div style="margin-top: 12px;">
+        <button id="logWorkoutFromPlanBtn" class="workout-btn" style="background:#2e5a3e;"><i class="fas fa-check-circle"></i> Log this workout (+35 XP bonus)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rank ladder reference -->
+  <div class="card" style="margin-top: 1.2rem;">
+    <div class="ladder-title"><i class="fas fa-crown"></i> 10 Body Ranks (Bronze → Expert)</div>
+    <div class="rank-list" id="rankReferenceList"></div>
+  </div>
+  <footer>🏋️ Earn XP by logging workouts. Take the Body Assessment to get bonus XP and custom training plans!</footer>
+</div>
+
+<script>
+  // ---------- RANK DEFINITIONS ----------
+  const RANKS = [
+    { name: "Bronze", minXP: 0, maxXP: 99, icon: "🥉", color: "#cd7f32" },
+    { name: "Silver", minXP: 100, maxXP: 299, icon: "🥈", color: "#c0c0c0" },
+    { name: "Gold", minXP: 300, maxXP: 599, icon: "🥇", color: "#ffd700" },
+    { name: "Platinum", minXP: 600, maxXP: 999, icon: "💎", color: "#b0c4de" },
+    { name: "Diamond", minXP: 1000, maxXP: 1499, icon: "🔹", color: "#b9f2ff" },
+    { name: "Heroic", minXP: 1500, maxXP: 2099, icon: "⚡", color: "#e8702a" },
+    { name: "Master", minXP: 2100, maxXP: 2799, icon: "🏅", color: "#cf9f4a" },
+    { name: "Grandmaster", minXP: 2800, maxXP: 3599, icon: "🌟", color: "#f5c542" },
+    { name: "GreatGrandmaster", minXP: 3600, maxXP: 4499, icon: "👑", color: "#e6b422" },
+    { name: "Expert", minXP: 4500, maxXP: Infinity, icon: "🧠", color: "#ff5555" }
+  ];
+
+  function getRankFromXP(xp) {
+    for (let i=0; i<RANKS.length; i++) {
+      if (xp >= RANKS[i].minXP && xp <= RANKS[i].maxXP) return { ...RANKS[i], index: i };
+    }
+    return { ...RANKS[RANKS.length-1], index: RANKS.length-1 };
+  }
+
+  function getNextRankProgress(xp, rankObj) {
+    if (rankObj.index === RANKS.length-1) return { percent: 100, next: null, pointsNeeded: 0 };
+    const nextRank = RANKS[rankObj.index+1];
+    const currentMin = rankObj.minXP;
+    const nextMin = nextRank.minXP;
+    let progress = (xp - currentMin) / (nextMin - currentMin);
+    progress = Math.min(0.999, Math.max(0, progress));
+    return { percent: progress*100, next: nextRank, pointsNeeded: nextMin - xp };
+  }
+
+  // ---------- APP STATE ----------
+  let userXP = 0;
+  let activityHistory = [];
+  let lastAssessment = null; // { score, answers, bonusGiven }
+
+  const STORAGE_KEY = "FitnessRankAscendV2";
+
+  function loadData() {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        userXP = data.userXP || 0;
+        activityHistory = data.activityHistory || [];
+        lastAssessment = data.lastAssessment || null;
+      } catch(e) {}
+    }
+  }
+  function saveData() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      userXP, activityHistory: activityHistory.slice(0, 40), lastAssessment
+    }));
+  }
+
+  // Helper add XP
+  function addXP(points, workoutName, silent=false) {
+    if (points <= 0) return false;
+    const oldRank = getRankFromXP(userXP);
+    userXP += points;
+    const newRank = getRankFromXP(userXP);
+    activityHistory.unshift({ workoutName, points, timestamp: new Date().toLocaleString() });
+    if (activityHistory.length > 40) activityHistory.pop();
+    saveData();
+    updateAllUI();
+    if (!silent) {
+      if (oldRank.name !== newRank.name) showMessage(`✨ RANK UP! ${oldRank.name} → ${newRank.name} ${newRank.icon} ✨`, true);
+      else showMessage(`💪 +${points} XP | ${workoutName} | ${newRank.name} rank`, false);
+    }
+    return true;
+  }
+
+  // UI updates
+  function updateAllUI() {
+    const rank = getRankFromXP(userXP);
+    document.getElementById("currentRankDisplay").innerText = rank.name;
+    document.getElementById("rankEmoji").innerHTML = rank.icon;
+    document.getElementById("totalPoints").innerText = userXP;
+    const { percent, next, pointsNeeded } = getNextRankProgress(userXP, rank);
+    const pointsSpan = document.getElementById("pointsToNext");
+    const nextInfoDiv = document.getElementById("nextRankInfo");
+    if (!next) {
+      pointsSpan.innerText = "0";
+      nextInfoDiv.innerHTML = `🏆 MAX RANK: EXPERT — Legend! 🏆`;
+    } else {
+      pointsSpan.innerText = pointsNeeded;
+      nextInfoDiv.innerHTML = `⭐ Next: ${next.name} ${next.icon} — need ${pointsNeeded} XP`;
+    }
+    document.getElementById("rankProgressFill").style.width = `${percent}%`;
+    const progressRangeSpan = document.getElementById("progressRangeText");
+    if (!next) progressRangeSpan.innerText = `${userXP} XP (MAX)`;
+    else progressRangeSpan.innerText = `${userXP - rank.minXP} / ${next.minXP - rank.minXP} to ${next.name}`;
+    
+    renderActivityLog();
+    renderRankReference(rank.name);
+    if (lastAssessment) document.getElementById("lastAssessmentBadge").innerHTML = `✅ Assessed: body score ${lastAssessment.score}/12`;
+    else document.getElementById("lastAssessmentBadge").innerHTML = `⚠️ Not assessed yet`;
+  }
+
+  function renderActivityLog() {
+    const container = document.getElementById("activityLogList");
+    if (!activityHistory.length) { container.innerHTML = `<div style="padding:20px; text-align:center;">🏁 No logs — press a workout button</div>`; return; }
+    let html = "";
+    activityHistory.slice(0, 12).forEach(act => {
+      html += `<div class="log-entry"><i class="fas fa-running"></i> ${escapeHtml(act.workoutName)} <strong style="color:#ffcd7e;">+${act.points} XP</strong> <span style="float:right; font-size:0.65rem;">${act.timestamp}</span></div>`;
+    });
+    container.innerHTML = html;
+  }
+
+  function renderRankReference(currentRankName) {
+    const container = document.getElementById("rankReferenceList");
+    let html = "";
+    RANKS.forEach(r => {
+      const active = r.name === currentRankName ? "border-left: 5px solid #ffb347; background:#23304e;" : "";
+      html += `<div class="rank-item" style="${active}"><span>${r.icon} ${r.name}</span><span>${r.minXP}–${r.maxXP === Infinity ? "∞" : r.maxXP}</span></div>`;
+    });
+    container.innerHTML = html;
+  }
+
+  function showMessage(msg, isRankUp=false) {
+    let toast = document.querySelector(".toast-msg");
+    if(toast) toast.remove();
+    let div = document.createElement("div");
+    div.className = "toast-msg";
+    div.innerHTML = `<i class="fas ${isRankUp ? 'fa-trophy' : 'fa-info-circle'}"></i> ${msg}`;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), 2800);
+  }
+
+  // ------ BODY ASSESSMENT SYSTEM ------
+  function computeBodyScore() {
+    const freq = parseInt(document.getElementById("assessFreq").value);
+    const pushups = parseInt(document.getElementById("assessPushups").value);
+    const cardio = parseInt(document.getElementById("assessCardio").value);
+    const strength = parseInt(document.getElementById("assessStrength").value);
+    return freq + pushups + cardio + strength; // max 12
+  }
+
+  // Submit assessment -> give bonus XP if not given before, or notify. Also track body score for workout generation.
+  function submitAssessment() {
+    const score = computeBodyScore();
+    const answers = {
+      freq: document.getElementById("assessFreq").options[document.getElementById("assessFreq").selectedIndex].text,
+      pushups: document.getElementById("assessPushups").options[document.getElementById("assessPushups").selectedIndex].text,
+      cardio: document.getElementById("assessCardio").options[document.getElementById("assessCardio").selectedIndex].text,
+      strength: document.getElementById("assessStrength").options[document.getElementById("assessStrength").selectedIndex].text
+    };
+    let bonusGiven = false;
+    let bonusXP = 0;
+    // if first assessment or if never given bonus for this assessment version (we give only once per assessment major)
+    if (!lastAssessment || !lastAssessment.bonusGiven) {
+      // award bonus XP based on body score: from 10 to 80 XP
+      bonusXP = Math.floor(score * 6) + 15; // min 15, max 12*6+15=87
+      addXP(bonusXP, "🏅 Body Assessment Bonus", false);
+      bonusGiven = true;
+      showMessage(`🔥 Body assessment complete! +${bonusXP} XP bonus for your stats!`, false);
+    } else {
+      showMessage(`📊 Assessment updated. No bonus XP (already claimed). Keep training!`, false);
+    }
+    lastAssessment = {
+      score: score,
+      answers: answers,
+      bonusGiven: bonusGiven || (lastAssessment && lastAssessment.bonusGiven),
+      timestamp: new Date().toISOString()
+    };
+    if (!bonusGiven && lastAssessment && lastAssessment.bonusGiven) lastAssessment.bonusGiven = true;
+    saveData();
+    const resultDiv = document.getElementById("assessmentResult");
+    resultDiv.innerHTML = `<i class="fas fa-chart-simple"></i> Body Score: ${score}/12 
